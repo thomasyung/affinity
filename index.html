@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Affinity</title>
+  <link href='http://fonts.googleapis.com/css?family=Open+Sans:300,400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+  <link rel="stylesheet" href="menu.css?ver=1.6">
+  <script src="menu.js?ver=1.0"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      -webkit-box-sizing: border-box;
+    }
+    #appname {
+      float: left;
+      margin: 10px;
+      font-weight: 600;
+    }
+    #actionbar {
+      position: fixed;
+      bottom: 0;
+      background: #dddeee;
+      background-color: rgba(221, 222, 238, .9);
+      width: 100%;
+      height: 2.5em;
+      padding: .5em;
+      border-top: 1px solid #ccc;
+      z-index: 1000;
+    }
+    #message_area {
+      color: red;
+    }
+    #scroller {
+      position: fixed;
+      right: 0;
+      bottom: 3em;
+      padding: .5em;
+      background-color: rgba(221, 222, 238, .5);
+      z-index: 1000;
+    }
+    #scroller .arrow-up {
+      display: inline-block;
+      width: 0; 
+      height: 0; 
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 6px solid blue;
+    }
+    #scroller .arrow-down {
+      display: inline-block;
+      width: 0; 
+      height: 0; 
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid blue;
+    }
+    #scrollbottom {
+      height: 50px;
+    }
+    #clipboard {
+      display: none;
+    }
+    body {
+      margin: 0;
+      font-family: 'Open Sans', 'sans-serif';
+      font-weight: 300;
+    }
+    .removecategory {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      color: blue;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .category {
+      position: relative;
+      list-style-type: none;
+      float: left;
+      background-color: #eee;
+      margin: 10px 0 0 10px;
+      padding: 0 0 0 10px;
+      width: 300px;
+    }
+    .stickynote {
+      font-size: 12px;
+      position: relative;
+      float: left;
+      width: 135px;
+      height: 135px;
+      padding: 0 10px 0 10px;
+      border: 1px solid #efefef;
+      margin: 0 9px 9px 0;
+      background: #FCF0AD;
+      -webkit-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.27), 0 0 40px rgba(0, 0, 0, 0.06) inset;
+      -moz-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.27), 0 0 40px rgba(0, 0, 0, 0.06) inset; 
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.27), 0 0 40px rgba(0, 0, 0, 0.06) inset;
+    }
+    .editfield {
+      margin: 1em 0 0 0;
+      font-family: 'Open Sans', 'sans-serif';
+      font-weight: 300;
+      font-size: 16px;
+      width: 265px;
+    }
+    textarea.editfield {
+      font-size: 16px;
+      background-color: #FCF0AD;
+      width: 112px;
+      height: 100px;
+    }
+    .editfieldchars {
+      color: red;
+      font-size: 12px;
+      margin-top: 0;
+    }
+    .selectedcategory, .selectednote {
+      border: 1px solid red;
+    }
+    .button-link {
+      background: none !important;
+      border: none; 
+      color: blue;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 !important;
+    }
+    @media screen and (min-height: 36em) {
+      #scroller {
+        display: none;
+      }
+    }
+  </style>
+  <script>
+
+    function getQueryString(){
+      var vars = {}, hash;
+      var hashes = location.href.slice(location.href.indexOf('?') + 1).split('&');
+      for(var i = 0; i < hashes.length; i++){
+        hash = hashes[i].split('=');
+        vars[hash[0]] = hash[1];
+      }
+      return vars;
+    };
+
+    function guid() {
+        function _p8(s) {
+            var p = (Math.random().toString(16)+"000000000").substr(2,8);
+            return s ? "-" + p.substr(0,4) + "-" + p.substr(4,4) : p ;
+        }
+        return _p8() + _p8(true) + _p8(true) + _p8();
+    }
+
+    $(function() {
+      
+      menu_init();
+
+      var move_status = false;
+
+      var uuid = "affinity";
+
+      var params = getQueryString();
+      
+      if (params.uuid) {
+        if (params.uuid.length == 36 ) {
+          uuid = params.uuid;
+          $('#content').html('');
+          $.getJSON(uuid+".json", function(data){
+            for (var i=0; i<data.length; i++){
+              var tmp = '';
+              tmp += '<ul class="category"><p class="categoryname">'+data[i].category+'</p>';
+              if (i > 0) { tmp += '<span class="removecategory">[x]</span>'; }
+              for (var x=0; x<data[i].notes.length; x++){
+                tmp += '<li class="stickynote"><p>'+data[i].notes[x].text+'</p></li>';
+              }
+              tmp += '</ul>';
+              $("#content").append(tmp);
+            }
+            $(".category").sortable({
+              items: ".stickynote",
+              connectWith: ".category"
+            });
+            $(".category").draggable({ grid: [ 20, 20 ] });
+          });
+        }
+      } else {
+        uuid = guid();
+        location.hash = "?uuid="+uuid;
+      }
+
+      $('#message_area').text('Hint: Tap/click to select/deselect.').effect('bounce', 'slow');
+
+      $(document).on("click", "#save_affinity", function(e){
+        var affinity = [];
+        $(".category").each(function(e){
+          var cat = {};
+          var notes = [];
+          cat.category = $(this).find('.categoryname').first().text();
+          $(this).find('.stickynote p').each(function(evt){
+            notes.push({"text":$(this).text(), "color":"yellow"});
+          });
+          cat.notes = notes;
+          affinity.push(cat);
+        })
+        $.post("save.php", {uuid: uuid, data: JSON.stringify(affinity)}, function(data){ 
+          $("#message_area").text(data).effect("bounce", "slow");
+        });
+      });
+
+      $(document).on("click", "#new_category", function(e){
+        $('#content').append('<ul class="category"><p class="categoryname">New category</p><span class="removecategory">[x]</span></ul><div>');
+        $(".category").sortable({
+          items: ".stickynote",
+          connectWith: ".category"
+        });
+        $(".category").draggable({ grid: [ 20, 20 ] });
+      });
+
+      $(document).on("click", "#new_note", function(e){
+        var categories = $('.selectedcategory');
+        if (categories.length > 0) {
+          categories.each(function(e){
+            $(this).append('<li class="stickynote"><p>New note</p></li>');
+          });
+        } else {
+          $('.category').first().append('<li class="stickynote"><p>New note</p></li>');
+        }
+        $(".category").sortable({
+          items: ".stickynote",
+          connectWith: ".category"
+        });
+      });
+
+      $(document).on("click", "#move_note", function(e){
+        if ($('.selectednote').length > 0) {
+          move_status = true;
+          $('.selectednote').appendTo('#clipboard');
+          $('#clipboard').find('.stickynote').removeClass('selectednote');
+          $("#message_area").text("Now select the move target.").effect("bounce", "slow");
+        } else {
+          $("#message_area").text("Select at least one note to move.").effect("bounce", "slow");
+        }
+      });
+
+      $(document).on("click", "#delete_note", function(e){
+        if ($('.selectednote').length > 0) {
+          $("#message_area").text($('.selectednote').length + ' notes deleted.').effect("bounce", "slow");
+          $('.selectednote').remove();
+        } else {
+          $("#message_area").text("Select at least one note to delete.").effect("bounce", "slow");
+        }
+      });
+
+      $(document).on("click", ".removecategory", function(e){
+        var elems = $(this).parent().find(".stickynote");
+        elems.each(function(e){
+          $(".category").first().append($(this));
+        });
+        $(this).parent().remove();
+      });
+
+      $(document).on("click", ".editfield", function(e){
+        e.stopPropagation();
+      });
+
+      $(document).on("blur", ".editfield", function(e){
+        var txt = $(this).val();
+        $(this).prev().text(txt).show();
+        $(this).next().remove();
+        $(this).remove();
+      });
+
+      $(document).on("keydown", ".editfield", function(e){
+        if (e.keyCode == 27) { 
+          $(this).blur();
+        } else {
+          var maxlength = parseInt($(this).attr("maxlength"));
+          var charsleft = maxlength - $(this).val().length;
+          $(".charsleft").first().text(charsleft);
+        }
+      });
+
+      $(document).on("click", ".category", function(){
+        if (move_status == true) {
+          $('#clipboard').children().appendTo($(this));
+          move_status = false;
+          $('#message_area').text('');
+        } else {
+          if ($(this).hasClass("selectedcategory")){
+            $(this).removeClass("selectedcategory");
+          } else {
+            $(this).addClass("selectedcategory");
+          }
+        }
+      });
+
+      $(document).on("click", ".categoryname", function(e){
+        e.stopPropagation();
+        var charsleft = 50 - $(this).text().length;
+        $(this).hide().after('<input class="editfield" type="text" maxlength="50" value="'+$(this).text()+'"><p class="editfieldchars"><span class="charsleft">'+charsleft+'</span> characters left.</p>');
+        $('.editfield').trigger('focus');
+      });
+
+      $(document).on("click", ".stickynote", function(e){
+        e.stopPropagation();
+        if (move_status == true) {
+          $('#clipboard').children().insertAfter($(this));
+          move_status = false;
+          $('#message_area').text('');
+        } else {
+          if ($(this).hasClass("selectednote")){
+            $(this).removeClass("selectednote");
+          } else {
+            $(this).addClass("selectednote");
+          }
+          $('#message_area').text($('.selectednote').length + ' notes selected.');
+        }
+      });
+
+      $(document).on("click", ".stickynote p", function(e){
+        e.stopPropagation();
+        var charsleft = 140 - $(this).text().length;
+        $(this).hide().after('<textarea class="editfield" maxlength="140">'+$(this).text()+'</textarea><p class="editfieldchars"><span class="charsleft">'+charsleft+'</span> characters left.</p>');
+        $('.editfield').trigger('focus');
+      });
+
+      $(document).on("click", "#top", function(e){
+        $('html, body').animate({scrollTop: 0}, 500);
+      });
+
+      $(document).on("click", "#bottom", function(e){
+        $('html, body').animate({scrollTop: $(document).height()}, 500);
+      });
+
+    });
+  </script>
+</head>
+<body>
+  <div id="clipboard"></div>
+  <div id="menu" class="menu_toggle_close">
+    <div id="appname">Affinity</div>
+    <ul>
+      <li id="menu_toggle">Menu <div class="arrow-down"></div></li>
+      <li class="menu_item" id="new_category">New category</li>
+      <li class="menu_item" id="new_note">New note</li>
+      <li class="menu_item" id="move_note">Move note</li>
+      <li class="menu_item" id="delete_note">Delete note</li>
+      <li class="menu_item" id="save_affinity">Save</li>
+    </ul>
+  </div>
+  <div id="scroller">
+    <div class="arrow-up"></div><br>
+    <button id="top" class="button-link">Top</button>
+    <br><br>
+    <button id="bottom" class="button-link">Bottom</button>
+    <br>
+    <div class="arrow-down"></div>
+  </div>
+  <div style="clear: both;"></div>
+  <div id="content">
+    <ul class="category">
+      <p class="categoryname">Uncategorized</p>
+    </ul>
+  </div>
+  <div style="clear: both; height: 50px;"></div>
+  <div id="actionbar">
+    <span id="message_area"></span>
+  </div>
+</body>
+</html>
